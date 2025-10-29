@@ -1,0 +1,127 @@
+
+import tkinter as tk
+from enum import Enum, auto
+
+# ---------- model (as before) ----------
+class Phase(Enum):
+    RED = auto()
+    GREEN = auto()
+    YELLOW = auto()
+
+class Timer:
+    def __init__(self):
+        self.t = 0
+    def tick(self):
+        self.t += 1
+        return self.t
+
+class TrafficLight:
+    def __init__(self, green_s=30, yellow_s=4, red_s=30):
+        self.green_s  = int(green_s)
+        self.yellow_s = int(yellow_s)
+        self.red_s    = int(red_s)
+        self.phase    = Phase.RED
+        self.timer    = Timer()
+        self._remaining = self.red_s
+
+    def next(self):
+        if   self.phase == Phase.RED:
+            self.phase = Phase.GREEN
+            self._remaining = self.green_s
+        elif self.phase == Phase.GREEN:
+            self.phase = Phase.YELLOW
+            self._remaining = self.yellow_s
+        else:
+            self.phase = Phase.RED
+            self._remaining = self.red_s
+
+    def tick(self):
+        self.timer.tick()
+        if self._remaining <= 0:
+            self.next()
+            return True
+        self._remaining -= 1
+        if self._remaining == 0:
+            self.next()
+            return True
+        return False
+
+# ---------- GUI wrapper ----------
+def main():
+    global root, canvas, id_red, id_yel, id_grn, text_id, tl, interval_ms
+    root = tk.Tk()
+    root.title("Traffic Light Simulator")
+    root.geometry("320x400")
+    root.running = False
+    interval_ms = 50
+
+    tl = TrafficLight()
+
+    canvas = tk.Canvas(root, width=320, height=320, bg='white')
+    canvas.pack()
+
+    positions = [
+        (100, 10, 200, 100),   # red
+        (100, 100, 202, 200),  # yellow
+        (100, 200, 200, 300),  # green
+    ]
+
+    id_red = canvas.create_oval(*positions[0], fill='gray')
+    id_yel = canvas.create_oval(*positions[1], fill='gray')
+    id_grn = canvas.create_oval(*positions[2], fill='gray')
+
+    text_id = canvas.create_text(300, 10, fill="purple", font=('Times', 20))
+
+    # Buttons
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=10)
+
+    start_btn = tk.Button(button_frame, text="Start", command=start, width=10)
+    start_btn.pack(side='left', padx=10)
+
+    stop_btn = tk.Button(button_frame, text="Stop", command=stop, width=10)
+    stop_btn.pack(side='right', padx=10)
+
+    root.mainloop()
+
+def update_view():
+    # Red light
+    if tl.phase == Phase.RED:
+        canvas.itemconfigure(id_red, fill='#ff0000')
+    else:
+        canvas.itemconfigure(id_red, fill='gray')
+
+    # Yellow light
+    if tl.phase == Phase.YELLOW:
+        canvas.itemconfigure(id_yel, fill='#ffff00')
+    else:
+        canvas.itemconfigure(id_yel, fill='gray')
+
+    # Green light
+    if tl.phase == Phase.GREEN:
+        canvas.itemconfigure(id_grn, fill='#00ff00')
+    else:
+        canvas.itemconfigure(id_grn, fill='gray')
+
+    canvas.itemconfigure(text_id, text=f"{tl.phase.name} ({tl._remaining}s) t={tl.timer.t}")
+
+
+def gui_tick():
+    if not root.running:
+        return
+    tl.tick()
+    update_view()
+    if root.running:
+        root.after(interval_ms, gui_tick)
+
+def start():
+    if not root.running:
+        root.running = True
+        update_view()
+        root.after(interval_ms, gui_tick)
+
+def stop():
+    root.running = False
+
+if __name__ == "__main__":
+    main()
